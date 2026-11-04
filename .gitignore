@@ -1,0 +1,13 @@
+# Java 编译产物与 IDE 配置
+*.class
+*.jar
+target/
+out/
+build/
+.idea/
+*.iml
+
+# 系统
+Thumbs.db
+.DS_Store
+desktop.ini
