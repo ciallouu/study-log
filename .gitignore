@@ -7,6 +7,27 @@ build/
 .idea/
 *.iml
 
+# 敏感配置（数据库密码、密钥等，一旦推到远端即使删除也留在历史里）
+.env
+.env.*
+*.env
+application-local.yml
+application-local.yaml
+application-local.properties
+application-secret.yml
+application-secret.properties
+*.pem
+*.key
+*.p12
+*.jks
+*.keystore
+
+# 日志与临时文件
+*.log
+logs/
+*.tmp
+*.bak
+
 # 系统
 Thumbs.db
 .DS_Store
