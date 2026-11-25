@@ -95,4 +95,13 @@ public class MyLinkedList {
         }
         return sb.append("]").toString();
     }
+
+    // 字段私有、方法暴露：外界只能问"有几个"，不能改 size
+    public int size() {
+        return size;
+    }
+
+    public boolean isEmpty() {
+        return size == 0;
+    }
 }
