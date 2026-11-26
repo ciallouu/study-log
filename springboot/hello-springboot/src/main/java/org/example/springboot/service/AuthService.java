@@ -26,6 +26,7 @@ public class AuthService {
     public AuthService(UserDao userDao, JwtUtil jwtUtil) {
         this.userDao = userDao;
         this.jwtUtil = jwtUtil;
+        System.out.println("AuthService>>> XXX 被创建了"); // 实验用：证明启动即创建 + 单例，验证完可删
     }
 
     public void register(RegisterRequest req) {

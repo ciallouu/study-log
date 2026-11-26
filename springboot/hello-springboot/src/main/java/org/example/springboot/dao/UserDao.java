@@ -21,6 +21,7 @@ public class UserDao {
 
     public UserDao(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
+        System.out.println(">>> UserDaoXXX 被创建了"); // 实验用：证明启动即创建 + 单例，验证完可删
     }
 
     /** 结果集一行 → 一个 User 对象。created_at 用 getObject(LocalDateTime.class) 拿，免得手工转。 */
