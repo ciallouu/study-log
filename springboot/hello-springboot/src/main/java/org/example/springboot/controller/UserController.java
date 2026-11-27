@@ -3,6 +3,7 @@ package org.example.springboot.controller;
 import org.example.springboot.dao.UserDao;
 import org.example.springboot.entity.User;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -23,7 +24,8 @@ public class UserController {
     }
 
     @GetMapping
-    public List<User> list() {
+    public List<User> list(@RequestAttribute("ctx.use rId") int userId) {
+        System.out.println("当前访问者 id = " + userId);
         return userDao.findAllForList();
     }
 }

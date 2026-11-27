@@ -1,5 +1,6 @@
 package org.example.springboot.interceptor;
 
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -27,8 +28,6 @@ public class JwtInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response,
                              Object handler) throws Exception {
-        System.out.println("preHandle 被调用执行");
-
         // ① 头名照 HTTP 规范写，大小写不敏感（Tomcat 内部会把头名规范化）,
         String header = request.getHeader("Authorization");
 
@@ -42,22 +41,14 @@ public class JwtInterceptor implements HandlerInterceptor {
         // ③ 验签：签名不对 / 过期 / 格式错，一律 401
         String token = header.substring(7);
         try {
-            jwtUtil.parse(token);
-
-            // TODO(源) 问题1：parse() 成功后返回的是 Claims 对象，
-            //        里面有什么？有user.getId(), user.getUsername(), user.getRole()
-            //        从parse路径查询,返回的对象Claims对象值为
-            //        Jwts.parser()
-            //                .verifyWith(key)
-            //                .build()
-            //                .parseSignedClaims(token)
-            //                .getPayload();它具体返回的是什么又怎么跟
-            //                JwtUtil.createToken联系上的（提示：去 JwtUtil.createToken 看往里面塞了什么）
-
+            // Claims 的取法与 createToken 的对应、IllegalArgumentException 为什么实际打不到，
+            // 见 docs/问答记录.md「2026-11-27 JWT 三个概念」。
+            // request 的生命周期 = 一次请求，所以身份放这里，多个请求之间天然隔离。
+            Claims claims = jwtUtil.parse(token);
+            request.setAttribute("ctx.userId",   Integer.valueOf(claims.getSubject()));
+            request.setAttribute("ctx.username", claims.get("username", String.class));
+            request.setAttribute("ctx.role",     claims.get("role", Integer.class));
         } catch (JwtException | IllegalArgumentException e) {
-            // TODO(源) 问题2：为什么这里要接 IllegalArgumentException？
-            //  JwtException这是jwt密钥没有验证成功抛出的异常?还是指什么IllegalArgumentExceptionnull 是空串的异常报错
-            //        举一个具体的 token 值，会走到这个分支。我猜测的举例1 token=null2.token不符合密钥值或者token过期,顺带解释一下token的概念,我听过一种是词元
             writeUnauthorized(response, "凭证无效或已过期");
             return false;
         }
