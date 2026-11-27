@@ -1,5 +1,6 @@
 package org.example.springboot.interceptor;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.example.springboot.util.JwtUtil;
@@ -26,6 +27,7 @@ public class JwtInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response,
                              Object handler) throws Exception {
+        System.out.println("preHandle 被调用执行");
 
         // ① 头名照 HTTP 规范写，大小写不敏感（Tomcat 内部会把头名规范化）,
         String header = request.getHeader("Authorization");
@@ -37,9 +39,28 @@ public class JwtInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        // ③ 验签：下午写
-        // String token = header.substring(7);
-        // jwtUtil.parse(token);
+        // ③ 验签：签名不对 / 过期 / 格式错，一律 401
+        String token = header.substring(7);
+        try {
+            jwtUtil.parse(token);
+
+            // TODO(源) 问题1：parse() 成功后返回的是 Claims 对象，
+            //        里面有什么？有user.getId(), user.getUsername(), user.getRole()
+            //        从parse路径查询,返回的对象Claims对象值为
+            //        Jwts.parser()
+            //                .verifyWith(key)
+            //                .build()
+            //                .parseSignedClaims(token)
+            //                .getPayload();它具体返回的是什么又怎么跟
+            //                JwtUtil.createToken联系上的（提示：去 JwtUtil.createToken 看往里面塞了什么）
+
+        } catch (JwtException | IllegalArgumentException e) {
+            // TODO(源) 问题2：为什么这里要接 IllegalArgumentException？
+            //  JwtException这是jwt密钥没有验证成功抛出的异常?还是指什么IllegalArgumentExceptionnull 是空串的异常报错
+            //        举一个具体的 token 值，会走到这个分支。我猜测的举例1 token=null2.token不符合密钥值或者token过期,顺带解释一下token的概念,我听过一种是词元
+            writeUnauthorized(response, "凭证无效或已过期");
+            return false;
+        }
 
         return true;
     }
