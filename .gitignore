@@ -32,3 +32,6 @@ logs/
 Thumbs.db
 .DS_Store
 desktop.ini
+
+# 上传的文件不属于代码仓库
+uploads/
