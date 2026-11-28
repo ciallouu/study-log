@@ -14,7 +14,9 @@ import java.lang.annotation.Target;
  * 它通过 HandlerMethod 把这个标签读出来再判断。
  * 这也正是我们选 HandlerInterceptor 而不选 Filter 的原因——Filter 只有路径，看不到方法上的注解。
  */
-// TODO(源) 把下面这两行注解各写一句注释：@Target 在限制什么？@Retention(RUNTIME) 为什么必须写（不写会怎样）？
+// @Target：限制本注解能贴在哪些位置——METHOD（方法）、TYPE（类/接口/注解类型）。不写就处处可贴，编译器不帮你拦错地方。
+// @Retention(RUNTIME)：注解信息保留到运行期，反射才读得到。默认是 CLASS——只编译进 .class，JVM 不加载，getMethodAnnotation 返回 null。
+// （这两个叫"元注解"，它们自己也遵守同样的规矩：JDK 的 Target 就是被 @Target(ANNOTATION_TYPE) 修饰的。）
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface RequireRole {

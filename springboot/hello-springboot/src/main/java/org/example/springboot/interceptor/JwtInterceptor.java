@@ -13,9 +13,12 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.io.IOException;
 
 /**
- * JWT 拦截器（第一块：只做"有没有票"，验签留到下一步）。
+ * JWT 拦截器：认证（①③）+ 认人（②）+ 授权（④）。
  *
- * <p>TODO(源)：读完后在下面三个位置的注释里各写一句"为什么这样写"，我只看注释和验收结果。
+ * <p>完整请求链路：Tomcat → DispatcherServlet.doDispatch() → HandlerExecutionChain.applyPreHandle()
+ * → 本类的 preHandle() → 返回 true 才继续找 Controller 执行。
+ *
+ * <p>四段的分工见 docs/项目A-JWT认证链路.md。
  */
 @Component
 public class JwtInterceptor implements HandlerInterceptor {
@@ -30,13 +33,13 @@ public class JwtInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request,
                              HttpServletResponse response,
                              Object handler) throws Exception {
-        // ① 头名照 HTTP 规范写，大小写不敏感（Tomcat 内部会把头名规范化）,
+        // ① 取票：头名照 HTTP 规范写，大小写不敏感（Tomcat 内部会把头名规范化）。
         String header = request.getHeader("Authorization");
 
-        // TODO(源) 这里写一句：为什么这两种情况都要拒绝？排掉为空和没有Bearer 为开头的头格式
+        // 两种情况都拒绝：header 为 null = 根本没带票；不以 "Bearer " 开头 = 不是我们支持的认证方案（如 Basic xxx）。
         if (header == null || !header.startsWith("Bearer ")) {
             writeUnauthorized(response, "未登录或凭证缺失");
-            // TODO(源) 写一句：return false 之后，Controller 还会被调用吗？不会
+            // return false 之后 DispatcherServlet 直接 return，Controller 不会被调用——响应上面已经写完了。
             return false;
         }
 
@@ -57,6 +60,7 @@ public class JwtInterceptor implements HandlerInterceptor {
 
         // ④ 授权：认证回答"你是谁"，这一步回答"你能做什么"。
         // handler 就是这次请求要执行的那个方法（HandlerMethod），能读到它身上的注解。
+        // Filter 做不到这一点：它跑在路由查表之前，只知道路径，不知道要调哪个方法。
         if (handler instanceof HandlerMethod handlerMethod) {
             RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
             if (requireRole == null) { // 方法上没有，再看整个 Controller 上有没有
@@ -65,7 +69,8 @@ public class JwtInterceptor implements HandlerInterceptor {
             if (requireRole != null) {
                 Object roleAttr = request.getAttribute("ctx.role");
                 int role = (roleAttr instanceof Integer i) ? i : -1;
-                // TODO(源) 写一句：这里为什么用 role < 需要值，而不是 role != 需要值？
+                // 用 < 表示"至少这个等级"（role 是层级不是枚举）：要求 2 时，将来的 3 级超管也能进；
+                // 写 != 会把高等级挡在门外，每加一个等级都得回头改判断。
                 if (role < requireRole.value()) {
                     writeJson(response, HttpServletResponse.SC_FORBIDDEN, 403,
                             "无权限：需要角色 " + requireRole.value() + "，当前角色 " + role);
@@ -82,7 +87,7 @@ public class JwtInterceptor implements HandlerInterceptor {
      * 不写的话前端收到的是 200 + 空 body。
      */
     private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
-        writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, 401, message); // TODO(源) 这个常量等于几？
+        writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, 401, message); // SC_UNAUTHORIZED = 401
     }
 
     /** 401 和 403 都要"自己写响应"，所以抽成一个方法。 */
