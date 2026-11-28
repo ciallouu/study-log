@@ -4,8 +4,10 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.example.springboot.annotation.RequireRole;
 import org.example.springboot.util.JwtUtil;
 import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.io.IOException;
@@ -31,10 +33,10 @@ public class JwtInterceptor implements HandlerInterceptor {
         // ① 头名照 HTTP 规范写，大小写不敏感（Tomcat 内部会把头名规范化）,
         String header = request.getHeader("Authorization");
 
-        // TODO(源) 这里写一句：为什么这两种情况都要拒绝？
+        // TODO(源) 这里写一句：为什么这两种情况都要拒绝？排掉为空和没有Bearer 为开头的头格式
         if (header == null || !header.startsWith("Bearer ")) {
             writeUnauthorized(response, "未登录或凭证缺失");
-            // TODO(源) 写一句：return false 之后，Controller 还会被调用吗？
+            // TODO(源) 写一句：return false 之后，Controller 还会被调用吗？不会
             return false;
         }
 
@@ -53,6 +55,25 @@ public class JwtInterceptor implements HandlerInterceptor {
             return false;
         }
 
+        // ④ 授权：认证回答"你是谁"，这一步回答"你能做什么"。
+        // handler 就是这次请求要执行的那个方法（HandlerMethod），能读到它身上的注解。
+        if (handler instanceof HandlerMethod handlerMethod) {
+            RequireRole requireRole = handlerMethod.getMethodAnnotation(RequireRole.class);
+            if (requireRole == null) { // 方法上没有，再看整个 Controller 上有没有
+                requireRole = handlerMethod.getBeanType().getAnnotation(RequireRole.class);
+            }
+            if (requireRole != null) {
+                Object roleAttr = request.getAttribute("ctx.role");
+                int role = (roleAttr instanceof Integer i) ? i : -1;
+                // TODO(源) 写一句：这里为什么用 role < 需要值，而不是 role != 需要值？
+                if (role < requireRole.value()) {
+                    writeJson(response, HttpServletResponse.SC_FORBIDDEN, 403,
+                            "无权限：需要角色 " + requireRole.value() + "，当前角色 " + role);
+                    return false;
+                }
+            }
+        }
+
         return true;
     }
 
@@ -61,8 +82,13 @@ public class JwtInterceptor implements HandlerInterceptor {
      * 不写的话前端收到的是 200 + 空 body。
      */
     private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // TODO(源) 这个常量等于几？
+        writeJson(response, HttpServletResponse.SC_UNAUTHORIZED, 401, message); // TODO(源) 这个常量等于几？
+    }
+
+    /** 401 和 403 都要"自己写响应"，所以抽成一个方法。 */
+    private void writeJson(HttpServletResponse response, int httpStatus, int code, String message) throws IOException {
+        response.setStatus(httpStatus);
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write("{\"code\":401,\"message\":\"" + message + "\"}");
+        response.getWriter().write("{\"code\":" + code + ",\"message\":\"" + message + "\"}");
     }
 }

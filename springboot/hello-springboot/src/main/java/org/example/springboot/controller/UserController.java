@@ -24,7 +24,7 @@ public class UserController {
     }
 
     @GetMapping
-    public List<User> list(@RequestAttribute("ctx.use rId") int userId) {
+    public List<User> list(@RequestAttribute("ctx.userId") int userId) {
         System.out.println("当前访问者 id = " + userId);
         return userDao.findAllForList();
     }
